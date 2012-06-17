@@ -1,0 +1,87 @@
+# This logic element has two totally independent parts: control and status. They have been put in the same element to make it easier but can be used/ignored independently one from the other.
+# 1) STATUS:
+#    Take the Feller EDIZIOdue status and control codes and re-shape it for the Heizung template 1-13
+#    
+#    I/O:    
+#        E1-S : input status coming from the Feller
+#        A1-S : output to be sent to the QC Status object of the QuadConfig
+# 
+# 2) CONTROL:
+#    Take the Heizung template 1-13 control request and send it to a Feller EDIZIOdue
+#    This logic block will work with the Comfort, Night and Stand-by states.
+#    NOTE:This logic does NOT implement the Anti-Freeze state: 
+#         I think this is best handled by a general commute of some sort rather than on the QC UI directly (could be implemented in the future)
+#    
+#    I/O:    
+#        E2-C : input command coming from the QuadConfig command from template 1-13
+#        A2-C : output to be sent to Comfort-Mode object/GA of the Feller
+#        A3-C : output to be sent to Night-Mode object/GA of the Feller
+
+5000|"Heating-Ventilation-Air Conditioning\Heizung with Feller EDIZIOdue"|0|2|"E1-S (status Feller)"|"E2-C (QC command)"|3|"A1-S (QC status 1-13)"|"A2-C (GA Comfort Mode)"|"A3-C (GA Night Mode)"|"v1.0.0"
+
+# - The status logic uses no timer or variable
+# - The control logic uses 2 timesr and 2 variables to state transition flow. This is used 
+#   to make sure the transitions below happen in the right order to avoid display "glitches" on the Feller display
+5001|2|3|2|2|1
+
+# Status logic - INPUT
+5002|1|0|0
+# Control logic - INPUT
+5002|2|0|0
+
+# For Control-logic only: used to make sure the transitions below happen in the right order 
+# to avoid display "glitches" on the Feller display
+5003|1|0|0					
+5003|2|0|0
+
+# Status logic - OUTPUT
+5004|1|0|0|2|0
+# Control logic - OUTPUTS
+5004|2|0|0|1|0 # This must be resent at all time since direct switch to comfort mode from the Feller doesn't update the GA but only re-sends the status
+5004|3|0|0|2|0
+
+# ############ # 
+# Status logic #
+# ############ # 
+# The codes for template 1-13 are different then for the 0-series:
+# 1 == Comfort
+# 3 (and not 2) == Stand-by
+# 2 == Night
+# 4 == Anti-Freezing protection
+5012|0|"(EI or EC[1]) and ((int(EN[1]) & 1) <> 0)"|"1"|""|1|0|0|0
+5012|0|"(EI or EC[1]) and ((int(EN[1]) & 2) <> 0)"|"3"|""|1|0|0|0
+5012|0|"(EI or EC[1]) and ((int(EN[1]) & 4) <> 0)"|"2"|""|1|0|0|0
+5012|0|"(EI or EC[1]) and ((int(EN[1]) & 8) <> 0)"|"4"|""|1|0|0|0
+
+# ############# # 
+# Control logic #
+# ############# # 
+# Note: The Status codes for template 1-13 are different than for the command codes.
+# Command:
+# 	1 == Comfort
+# 	2 (and not 3) == Stand-by
+# 	3 == Night
+# 	4 == Anti-Freezing protection
+# Status:
+# 	1 == Comfort
+# 	3 (and not 2) == Stand-by
+# 	2 == Night
+# 	4 == Anti-Freezing protection
+# 
+# PART 1 - Command == Comfort
+5012|0|"EC[2] and (int(EN[2]) == 1)"|"1"|""|2|0|0|0
+
+# PART 2 - Command == Stand-by
+5012|0|"EC[2] and (EN[2] == 2) and (SA[1]==0)"|"0"|""|3|0|0|0 # first send the night mode OFF before disabling comfort mode, otherwise a temporary glitch happens
+5012|0|"EC[2] and (EN[2] == 2) and (SA[1]==0)"|"10"|"0.2"|0|1|1|0
+
+5012|0|"(EN[2] == 2) and (SA[1]==10) and (OC[1])"|"0"|""|2|0|0|0 # sends the second message and reset the status flag to 0
+5012|0|"(EN[2] == 2) and (SA[1]==10) and (OC[1])"|"0"|""|0|0|1|0
+
+# PART 3 - Command == Night
+5012|0|"EC[2] and (EN[2] == 3) and (SA[2]==0)"|"1"|""|3|0|0|0
+5012|0|"EC[2] and (EN[2] == 3) and (SA[2]==0)"|"10"|"0.2"|0|2|2|0
+
+5012|0|"(EN[2] == 3) and (SA[2]==10) and (OC[2])"|"0"|""|2|0|0|0
+5012|0|"(EN[2] == 3) and (SA[2]==10) and (OC[2])"|"0"|""|0|0|2|0
+

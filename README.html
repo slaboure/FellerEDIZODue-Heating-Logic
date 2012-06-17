@@ -1,0 +1,45 @@
+<html>
+    <head>
+        <title>Untitled document</title>
+    </head>
+    <body>
+        <h1><a name="h.19mavm7a4bd6"></a>&ldquo;11911_HeizungforFellerEDIZIOdue.hsl&rdquo;</h1>
+        <h1><a name="h.9sa88fq8n3tj"></a>Connecting Feller&rsquo;s EDIZIOdue to GIRA&rsquo;s QuadClient</h1>
+        <p></p>
+        <h1>Overview</h1>
+        <p>This logic handles the connection between a Feller EDIZIODue and the Gira HS QuadClient template 1-13. It handles the Standby, Comfort and Night modes. The Anti-freeze mode hasn&rsquo;t been implemented as I think it is better handled from a central group address rather than from the QuadClient directly. Yet, such an extension would be trivial to make, feel free to send your modifications as pull requests on the git repository hosting the logic.</p>
+        <p>The logic uses timers to make sure it sends the state transition messages to Feller in the right order: sending them in a random order could generate visible transition glitches on the display.</p>
+        <p>Last but not least, since the mode numbers are not the same on the 1-13 template and on the Feller, this module handles the proper mapping.</p>
+        
+        <h1>Description</h1>
+        <p>This logic requires two internal communication objects to be created in Gira for each Feller that needs to be attached to the QuadControl. These objects will be used to i) display the proper status in the QC template (Status) and ii) to receive the QC control request (Control).</p>
+        <p>Then, the logic will consume and feed the following KNX Group Address:</p>
+        <ol start="1">
+            <li class="c5 c0">The Feller Status Confirmation object (object 61)</li>
+            <li class="c0 c5">The Feller Comfort object (object 47)</li>
+            <li class="c5 c0">The Feller Night object (object 48)</li>
+        </ol>
+        <p>(each of those object will have to be in a separate GA).</p>
+        <h1>Setup</h1>
+        <h3>1) Create the Internal communication objects</h3>
+        <p>Create a Control and Status communication object for the Feller you want to control in QC:</p>
+        <p class="c2 c0"><img  hspace="5px"  align="middle" height="39" src="images/image04.png" width="206" ></img></p>
+        <p><img  hspace="5px"  align="middle" height="251" src="images/image03.png" width="311" /><img  hspace="5px"  align="middle" height="250" src="images/image06.png" width="306" /></p>
+        <p>IMPORTANT: Make sure to use a EIS 2.6 datatype (or similar), but not an RTC status type.</p>
+        <h3>2) Validate Feller Status Confirmation object in GIRA Expert</h3>
+        <p>Go in Gira Expert and check the Feller Status Confirmation GA (this is the GA that gets updated by Feller whenever the mode gets changed):</p>
+        <p><img  hspace="5px"  align="middle" height="333" src="images/image02.png" width="303" /></p>
+        <p>You have to verify that i) the Data Type is set to EIS 2.6 (and not RTC Status) and that ii) the Query during starting is set to &ldquo;Yes&rdquo;.</p>
+        <h3><a name="h.s0h043xr7p15"></a>3) Setup the logic in the Logic Editor</h3><p>Go in the logic editor, and wire the proper GA and internal GA properly:</p>
+        <p><img  hspace="5px"  align="middle" height="111" src="images/image01.png" width="667" /></p>
+        <p>IMPORTANT: Make sure to use TWO separate Input Boxes for the two Input: do not group the two GA in the same Input Box.</p><p></p>
+        <h3><a name="h.yz4bx8o21c6d"></a>4) create your Function in GIRA QuadConfig tool</h3>
+        <p>In GIRA Expert, go in the QuadConfig tool, and create a 1-13 template:</p><p></p>
+        <p><img  hspace="5px"  align="middle" height="405" src="images/image00.png" width="616" />
+        <p>Then, feed the template with the proper GA and internal GA create previously:</p><p><img  hspace="5px"  align="middle" height="258" src="images/image05.png" width="595" /></p>
+        <p>And you should be all set!</p>
+        <h1>License</h1>
+        <p>This piece of logic is licensed under the LGPL. In summary: use it as much as you want (including commercially), but if you are going to modify it, provide the source code of your modifications so others can benefit from it.</p>
+
+    </body>
+</html>
